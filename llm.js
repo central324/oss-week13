@@ -21,8 +21,8 @@ export async function ask(question) {
     body: JSON.stringify({
       model: process.env.LLM_MODEL,
       messages: [
-        { role: "user", content: question },
-        { role: "system", content: SYSTEM}
+        { role: "system", content: SYSTEM},
+        { role: "user", content: question }
       ]
     })
   });
@@ -38,8 +38,29 @@ export async function ask(question) {
 // chat([{ role: "user", content: "..." }, { role: "assistant", content: "..." }, ...])
 //   ->  the model's next answer, as a string
 export async function chat(history) {
-  // TODO P5: write this function (see problems/P5_chat.md). Delete the throw line below.
-  throw new Error("chat() is not written yet");
+  const url = `${process.env.LLM_BASE_URL}/chat/completions`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.LLM_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.LLM_MODEL,
+      messages: [
+        { role: "system", content: SYSTEM },
+        ...history
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error(`LLM: HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.choices[0].message.content.trim();
 }
 
 // analyze("a review")  ->  an object, not a sentence:
