@@ -5,6 +5,17 @@ const SYSTEM = `다음과 같은 규칙을 따른다.
                 1. 말투 : 존댓말을 사용한다, 초등학생한테 가르치듯이 친절하게 설명한다.
                 2. 길이 : 한 문단 이내로 답한다.
                 3. 형식 : 제목, 목록, 굵은 글씨 등 마크다운을 사용하지 않는다.`;
+
+const SYSTEM_JSON = `당신은 제품 후기를 분석하는 AI입니다.
+                     사용자가 작성한 후기를 분석하고 반드시 JSON 객체로만 답변하세요.
+
+                    JSON에는 다음 세 가지 키만 포함해야 합니다.
+                    1. sentiment: "positive", "negative", "neutral" 중 하나를 사용합니다.
+                    2. score: 만족도를 나타내는 1부터 5까지의 정수를 사용합니다.
+                    3. summary: 후기의 핵심 내용을 한 문장의 한국어 문자열로 요약합니다.
+
+                    JSON 외에 설명이나 마크다운 코드 블록은 출력하지 마세요.`;
+
 // TODO P4: make a constant SYSTEM here: the rules for every answer (tone, length, format).
 //          Then send it as the first message, before the user's message, in ask().
 
@@ -66,6 +77,41 @@ export async function chat(history) {
 // analyze("a review")  ->  an object, not a sentence:
 //   { sentiment: "positive" | "negative" | "neutral", score: 1..5, summary: "one short sentence" }
 export async function analyze(text) {
-  // TODO P6: write this function (see problems/P6_json.md). Delete the throw line below.
-  throw new Error("analyze() is not written yet");
+  const url = `${process.env.LLM_BASE_URL}/chat/completions`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.LLM_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.LLM_MODEL,
+      messages: [
+        { role: "system", content: SYSTEM_JSON },
+        { role: "user", content: text }
+      ],
+      response_format: { type: "json_object" }
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error(`LLM: HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices[0].message.content;
+
+  const { sentiment, score, summary } = JSON.parse(content);
+
+  const validSentiment = ["positive", "negative", "neutral"].includes(sentiment);
+  const validScore = Number.isInteger(score) && score >= 1 && score <= 5;
+  const validSummary = typeof summary === "string";
+
+  if (!validSentiment || !validScore || !validSummary) {
+    throw new Error("LLM: the answer has the wrong shape");
+  }
+
+  return { sentiment, score, summary };
 }
+
