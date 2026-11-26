@@ -1,7 +1,10 @@
 // The only file that talks to the LLM provider.
 // The provider, the model and the key come from .env:
 //   process.env.LLM_BASE_URL, process.env.LLM_MODEL, process.env.LLM_API_KEY
-
+const SYSTEM = `다음과 같은 규칙을 따른다.
+                1. 말투 : 존댓말을 사용한다, 초등학생한테 가르치듯이 친절하게 설명한다.
+                2. 길이 : 한 문단 이내로 답한다.
+                3. 형식 : 제목, 목록, 굵은 글씨 등 마크다운을 사용하지 않는다.`;
 // TODO P4: make a constant SYSTEM here: the rules for every answer (tone, length, format).
 //          Then send it as the first message, before the user's message, in ask().
 
@@ -18,7 +21,8 @@ export async function ask(question) {
     body: JSON.stringify({
       model: process.env.LLM_MODEL,
       messages: [
-        { role: "user", content: question }
+        { role: "user", content: question },
+        { role: "system", content: SYSTEM}
       ]
     })
   });
